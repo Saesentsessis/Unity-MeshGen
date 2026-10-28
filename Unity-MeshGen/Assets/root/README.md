@@ -11,8 +11,7 @@
 
 </div>
 
-**Unity MeshGen** is a helper mesh generation library, currently providing a very fast
-simple shape generation capabilities.
+**Unity MeshGen** is a fast, Burst-compatible library for generating simple procedural meshes in Unity.
 
 ## Key Types
 
@@ -20,6 +19,65 @@ simple shape generation capabilities.
 |----------------------|------------------------------------------------------------------------|
 | `MeshGenerator`      | Main entry point for all of the mesh generation functions              |
 | `MeshGeneratorUtils` | A pack of vectorized helper functions that are used in mesh generation |
+
+## Supported Shapes
+
+| Shape              | Descriptor                       | Function                                             |
+|--------------------|----------------------------------|------------------------------------------------------|
+| Hollow Cone        | `HollowConeMeshDescriptor`       | `MeshGenerator.CreateHollowConeMeshDescriptor`       |
+| Hollow Half-sphere | `HollowHalfSphereMeshDescriptor` | `MeshGenerator.CreateHollowHalfSphereMeshDescriptor` |
+
+> [!NOTE]
+> Any shape descriptor that has `Hollow` prefix in it comes with a hole. For example, a cone
+> would not have a base filled with triangles, a half-sphere would not have a cap on the equator.
+
+### Vertex Data
+
+Currently, all generation functions produce zero vertex attributes, except of position.
+Triangulation is included, although all generated meshes are smooth shaded where possible.
+
+## Benchmarks
+
+Configuration: Unity 6000.7.0b4 (Editor), Intel Core i5-11400F, 100000 iterations, 10 runs median.
+
+Timings refresher: `1 s = 1000 ms, 1 ms = 1000 us, 1 us = 1000 ns.`
+
+### Mesh Data Generation
+
+Pre-allocated `NativeArray`'s, calls to shape-specific `MeshGenerator.Generate{Shape}MeshData` function
+only. Zero managed allocations, pure generation performance.
+
+| Shape                               | Timings | Geometry Data       |
+|-------------------------------------|:-------:|---------------------|
+| Hollow Cone (64 resolution)         | 116 ns  | 65 verts, 64 tris   |
+| Hollow Cone (256 resolution)        | 256 ns  | 257 verts, 256 tris |
+| Hollow Half-Sphere (64 resolution)  | 305 ns  | 125 verts, 184 tris |
+| Hollow Half-Sphere (256 resolution) | 853 ns  | 509 verts, 760 tris |
+| Hollow Half-Sphere (Custom-78)      | 402 ns  | 78 verts, 134 tris  |
+| Hollow Half-Sphere (Custom-214)     | 843 ns  | 214 verts, 382 tris |
+
+There are still a lot of potential improvements that can be added to boost the generation algorithm,
+but I am almost certain that those numbers are good enough for the purpose of this plugin.
+
+### Descriptor + Mesh Object
+
+Nothing is pre-allocated, full generation lifecycle: create `{Shape}MeshDescriptor`, pass it to a mesh
+object generation function, attach mesh to a `MeshFilter.sharedMesh`. Time required to destroy the
+generated mesh or upload mesh data on the GPU are not accounted.
+
+| Shape                               | Timings  | Geometry Data       |
+|-------------------------------------|:--------:|---------------------|
+| Hollow Cone (64 resolution)         | 4.181 us | 65 verts, 64 tris   |
+| Hollow Cone (256 resolution)        | 4.509 us | 257 verts, 256 tris |
+| Hollow Half-Sphere (64 resolution)  | 4.637 us | 125 verts, 184 tris |
+| Hollow Half-Sphere (256 resolution) | 5.163 us | 509 verts, 760 tris |
+| Hollow Half-Sphere (Custom-78)      | 5.078 us | 78 verts, 134 tris  |
+| Hollow Half-Sphere (Custom-214)     | 5.736 us | 214 verts, 382 tris |
+
+> [!NOTE]
+> Expect better numbers inside the Player build, as Burst introduces significant overhead tied to
+> calling Burst-generated functions in editor (especially if they contain conditional scopes with
+> different code paths for different CPU instruction sets, e.g. `X86.Avx.IsAvxSupported`).
 
 ## Quick Start
 
@@ -34,24 +92,33 @@ var resolution = 16;
 var halfAngleDegrees = 45f;
 
 // Create a reusable descriptor, that describes the shape
-var descriptor = MeshGenerator.CreateConeMeshDescriptor(resolution, halfAngleDegrees);
+var descriptor = MeshGenerator.CreateHollowConeMeshDescriptor(resolution, halfAngleDegrees);
 
 // Then, either generate the mesh via an extension method
-var coneMesh = descriptor.GenerateMesh();
+var coneMesh = descriptor.CreateMesh();
 
 // Or call the method manually, result would be the same
-var coneMesh2 = MeshGenerator.GenerateHollowConeMesh(in descriptor);
+var coneMesh2 = MeshGenerator.CreateHollowConeMesh(in descriptor);
 ```
 
 You can also generate mesh data exclusively inside two native arrays - vertices and indices.
 
 ```csharp
+using Unity.Collections;
+using Unity.Mathematics;
+
 // Allocate the resulting arrays
-var vertices = new NativeArray(descriptor.VertexCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-var indices = new NativeArray(descriptor.IndexCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+var vertices = new NativeArray<float3>(descriptor.VertexCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+var indices = new NativeArray<ushort>(descriptor.IndexCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
 // Call the shape-specific function, passing a descriptor, vertices and indices array
 MeshGenerator.GenerateHollowConeMeshData(in descriptor, vertices, indices);
+
+// Your code goes here...
+
+// Don't forget to call dispose when you're done with generated mesh data
+vertices.Dispose();
+indices.Dispose();
 ```
 
 > [!NOTE]
@@ -105,14 +172,14 @@ Or manually add the scoped registry to your `Packages/manifest.json`:
 1. Open Unity and navigate to `Window` -> `Package Manager`.
 2. Click on the `+` icon in the top left corner and select `Add package from git URL...`.
 3. ```
-   https://github.com/Saesentsessis/Unity-MeshGen.git?path=Unity-Data-Shards/Assets/root
+   https://github.com/Saesentsessis/Unity-MeshGen.git?path=Unity-MeshGen/Assets/root
    ```
 4. Click Add.
 
 You can specify exact release version of this package like this:
 
 ```
-https://github.com/Saesentsessis/Unity-Data-Shards.git?path=Unity-MeshGen/Assets/root#0.1.0
+https://github.com/Saesentsessis/Unity-MeshGen.git?path=Unity-MeshGen/Assets/root#0.1.0
 ```
 
 ## License
