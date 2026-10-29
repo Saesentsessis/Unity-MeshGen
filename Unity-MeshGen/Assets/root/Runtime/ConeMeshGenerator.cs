@@ -64,7 +64,11 @@ namespace Saesentsessis.MeshGeneration
 		public static Mesh CreateHollowConeMesh(in HollowConeMeshDescriptor descriptor)
 		{
 			const MeshUpdateFlags flags = MeshUpdateFlags.DontNotifyMeshUsers | MeshUpdateFlags.DontRecalculateBounds |
-			                              MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontValidateLodRanges;
+			                              MeshUpdateFlags.DontValidateIndices
+#if UNITY_6000_OR_NEWER
+			                              | MeshUpdateFlags.DontValidateLodRanges
+#endif
+				;
 
 			if ((uint)descriptor.Resolution + 1 > int.MaxValue)
 				throw new ArgumentOutOfRangeException(nameof(descriptor.Resolution), descriptor.Resolution,

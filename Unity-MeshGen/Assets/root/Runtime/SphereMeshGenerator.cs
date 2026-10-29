@@ -243,7 +243,11 @@ namespace Saesentsessis.MeshGeneration
 		public static Mesh CreateHollowHalfSphereMesh(in HollowHalfSphereMeshDescriptor descriptor)
 		{
 			const MeshUpdateFlags flags = MeshUpdateFlags.DontNotifyMeshUsers | MeshUpdateFlags.DontRecalculateBounds |
-			                              MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontValidateLodRanges;
+			                              MeshUpdateFlags.DontValidateIndices
+#if UNITY_6000_OR_NEWER
+			                              | MeshUpdateFlags.DontValidateLodRanges
+#endif
+				;
 			
 			if ((uint)descriptor.VertexCount > int.MaxValue)
 				throw new ArgumentOutOfRangeException(nameof(descriptor.VertexCount), descriptor.VertexCount, "Vertex count should be in range [4 : 2147483647].");
