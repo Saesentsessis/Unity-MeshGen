@@ -14,6 +14,10 @@ on:
       UNITY_LICENSE: { required: true }
       UNITY_EMAIL: { required: true }
       UNITY_PASSWORD: { required: true }
+      GH_PAT: { required: false }
+
+permissions:
+  contents: read
 
 ##############################################################################
 # 2. Job – run Unity tests via GameCI
@@ -33,7 +37,7 @@ jobs:
       # --------------------------------------------------------------------- #
       # 2-a. Checkout
       # --------------------------------------------------------------------- #
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           lfs: false
 
@@ -65,7 +69,8 @@ jobs:
         run: echo "image=unityci/editor:ubuntu-${{ inputs.unityVersion }}-${{ matrix.platform }}-3" >> $GITHUB_OUTPUT
         shell: bash
 
-      - uses: game-ci/unity-test-runner@v4
+      - name: Run Unity tests
+        uses: game-ci/unity-test-runner@v4.3.0
         id: tests
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -76,7 +81,7 @@ jobs:
           unityVersion: ${{ inputs.unityVersion }}
           testMode: ${{ inputs.testMode }}
           customImage: ${{ steps.custom_image.outputs.image }}
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          githubToken: ${{ secrets.GH_PAT != '' && secrets.GH_PAT || github.token }}
           checkName: ${{ inputs.unityVersion }} ${{ inputs.testMode }} ${{ matrix.platform }} Test Results
           artifactsPath: artifacts-${{ inputs.unityVersion }}-${{ inputs.testMode }}-${{ matrix.platform }}
           customParameters: -CI true -GITHUB_ACTIONS true
