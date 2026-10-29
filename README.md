@@ -31,60 +31,6 @@
 > Any shape descriptor that has `Hollow` prefix in it comes with a hole. For example, a cone
 > would not have a base filled with triangles, a half-sphere would not have a cap on the equator.
 
-### Vertex Data
-
-Currently, all generation functions produce zero vertex attributes, except of position.
-Triangulation is included, although all generated meshes are smooth shaded where possible.
-
-## Benchmarks
-
-Configuration: Unity 6000.7.0b4 (Editor), Intel Core i5-11400F, 100000 iterations, 10 runs median.
-
-Timings refresher: `1 s = 1000 ms, 1 ms = 1000 us, 1 us = 1000 ns.`
-
-### Mesh Data Generation
-
-Pre-allocated `NativeArray`'s, calls to shape-specific `MeshGenerator.Generate{Shape}MeshData` function
-only. Zero managed allocations, pure generation performance.
-
-| Shape                               | Timings | Geometry Data       |
-|-------------------------------------|:-------:|---------------------|
-| Hollow Cone (64 resolution)         | 116 ns  | 65 verts, 64 tris   |
-| Hollow Cone (256 resolution)        | 256 ns  | 257 verts, 256 tris |
-| Hollow Half-Sphere (64 resolution)  | 305 ns  | 125 verts, 184 tris |
-| Hollow Half-Sphere (256 resolution) | 853 ns  | 509 verts, 760 tris |
-| Hollow Half-Sphere (Custom-78)      | 402 ns  | 78 verts, 134 tris  |
-| Hollow Half-Sphere (Custom-214)     | 843 ns  | 214 verts, 382 tris |
-
-There are still a lot of potential improvements that can be added to boost the generation algorithm,
-but I am almost certain that those numbers are good enough for the purpose of this plugin.
-
-### Descriptor + Mesh Object
-
-Nothing is pre-allocated, full generation lifecycle: create `{Shape}MeshDescriptor`, pass it to a mesh
-object generation function, attach mesh to a `MeshFilter.sharedMesh`. Time required to destroy the
-generated mesh or upload mesh data on the GPU are not accounted.
-
-| Shape                               | Timings  | Geometry Data       |
-|-------------------------------------|:--------:|---------------------|
-| Hollow Cone (64 resolution)         | 4.181 us | 65 verts, 64 tris   |
-| Hollow Cone (256 resolution)        | 4.509 us | 257 verts, 256 tris |
-| Hollow Half-Sphere (64 resolution)  | 4.637 us | 125 verts, 184 tris |
-| Hollow Half-Sphere (256 resolution) | 5.163 us | 509 verts, 760 tris |
-| Hollow Half-Sphere (Custom-78)      | 5.078 us | 78 verts, 134 tris  |
-| Hollow Half-Sphere (Custom-214)     | 5.736 us | 214 verts, 382 tris |
-
-`Custom-78` sphere mesh was generated from this set of bands: `20, 16, 13, 10, 8, 6, 4`.
-![Custom Half-Sphere](resources/images/Half-Sphere(Custom-78).png)
-
-`Custom-214` sphere mesh was generated from this set of bands: `44, 36, 31, 25, 20, 16, 13, 10, 8, 6, 4`.
-![Custom Half-Sphere.png](resources/images/Half-Sphere(Custom-214).png)
-
-> [!NOTE]
-> Expect better numbers inside the Player build, as Burst introduces significant overhead tied to
-> calling Burst-generated functions in editor (especially if they contain conditional scopes with
-> different code paths for different CPU instruction sets, e.g. `X86.Avx.IsAvxSupported`).
-
 ## Quick Start
 
 Create a specific mesh descriptor - compact data structure that would be passed right inside the
@@ -120,9 +66,8 @@ var indices = new NativeArray<ushort>(descriptor.IndexCount, Allocator.Persisten
 // Call the shape-specific function, passing a descriptor, vertices and indices array
 MeshGenerator.GenerateHollowConeMeshData(in descriptor, vertices, indices);
 
-// Your code goes here...
-
-// Don't forget to call dispose when you're done with generated mesh data
+// Now you can create your own mesh object or do whatever you want with the generated data
+// After you've done with it, don't forget to call dispose on the arrays
 vertices.Dispose();
 indices.Dispose();
 ```
@@ -130,6 +75,97 @@ indices.Dispose();
 > [!NOTE]
 > Some of the descriptors may inherit from `IDisposable`, so don't forget to call `Dispose()` method on
 > them, or wrap such structures inside a `using` block.
+
+Some of the shapes may have special descriptor creation functions. Let's take as example a `HollowHalfSphere`.
+`MeshGenerator.CreateHollowHalfSphereMeshDescriptor` has several overloads for this function, including the
+generation of the half-sphere from custom array of vertex loop sizes, that is represented by `NativeArray<int>`.
+
+```csharp
+// Allocate a buffer that would contain vertex loop sizes
+using var bands = new NativeArray<int>(5, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+
+// It is not necessary to fill loop sizes in descending order
+bands[0] = 12;
+bands[1] = 9;
+bands[2] = 7;
+bands[3] = 5;
+bands[4] = 4;
+
+// This method would create a descriptor from pre-defined set of vertex loops,
+// from 12 vertices at the equator down to a single vertex at apex.
+var descriptor = MeshGenerator.CreateHollowHalfSphereMeshDescriptor(bands);
+
+// Then you can generate mesh or mesh data using the examples provided above...
+var mesh = descriptor.CreateMesh();
+```
+
+## Vertex Data
+
+Currently, all generation functions produce no vertex attributes other than position.
+Triangulation is included, although all generated meshes lack normals. Index size is
+selected depending on vertex buffer capacity (16-bit indices for meshes with `<= 65536`
+verts, otherwise 32-bit indices).
+
+## Benchmarks
+
+Configuration: Unity 6000.7.0b4 (Editor), Intel Core i5-11400F.
+50 warmup iterations, 100000 iterations, 10 runs median.
+Burst safety checks and leak detection enabled.
+
+### Mesh Data Generation
+
+**Baseline**: A straightforward managed implementation. No Burst, no Jobs, no native memory, no
+`unsafe` context.
+
+**MeshGen**: Pre-allocated `NativeArray`'s, calls to shape-specific `MeshGenerator.Generate{Shape}MeshData`
+function only. Zero managed allocations, pure generation performance.
+
+| Shape                               | MeshGen | Baseline  | Speedup | Baseline GC Alloc (per call) | Geometry Data       |
+|-------------------------------------|:-------:|:---------:|:-------:|:----------------------------:|---------------------|
+| Hollow Cone (64 resolution)         | 116 ns  | 3.045 us  |  26.5x  |           1.51 KiB           | 65 verts, 64 tris   |
+| Hollow Cone (256 resolution)        | 256 ns  | 11.639 us |  44.7x  |           6.01 KiB           | 257 verts, 256 tris |
+| Hollow Half-Sphere (64 resolution)  | 305 ns  | 7.129 us  |  23.9x  |           3.62 KiB           | 125 verts, 184 tris |
+| Hollow Half-Sphere (256 resolution) | 853 ns  | 33.011 us |  38.9x  |          14.87 KiB           | 509 verts, 760 tris |
+| Hollow Half-Sphere (Custom-78)      | 389 ns  | 4.577 us  |  11.8x  |           2.48 KiB           | 78 verts, 134 tris  |
+| Hollow Half-Sphere (Custom-214)     | 840 ns  | 12.148 us |  14.5x  |           6.98 KiB           | 214 verts, 382 tris |
+
+Further optimizations are possible. See the roadmap.
+
+### Descriptor + Mesh Object
+
+**Baseline**: A straightforward managed implementation. No Burst, no Jobs, no native memory, no
+`unsafe` context.
+
+**MeshGen**: Nothing is pre-allocated, full generation lifecycle: create `{Shape}MeshDescriptor`,
+pass it to a mesh object generation function, attach mesh to a `MeshFilter.sharedMesh`. Time
+required to destroy the generated mesh or upload mesh data on the GPU are not accounted.
+
+| Shape                               | MeshGen  | Baseline  | Speedup | Baseline GC Alloc | Geometry Data       |
+|-------------------------------------|:--------:|:---------:|:-------:|:-----------------:|---------------------|
+| Hollow Cone (64 resolution)         | 4.175 us | 6.996 us  |  1.7x   |     1.51 KiB      | 65 verts, 64 tris   |
+| Hollow Cone (256 resolution)        | 4.313 us | 17.170 us |  4.0x   |     6.01 KiB      | 257 verts, 256 tris |
+| Hollow Half-Sphere (64 resolution)  | 4.637 us | 12.197 us |  2.7x   |     3.62 KiB      | 125 verts, 184 tris |
+| Hollow Half-Sphere (256 resolution) | 5.163 us | 43.462 us |  8.5x   |     14.87 KiB     | 509 verts, 760 tris |
+| Hollow Half-Sphere (Custom-78)      | 4.730 us | 9.061 us  |  1.9x   |     2.48 KiB      | 78 verts, 134 tris  |
+| Hollow Half-Sphere (Custom-214)     | 5.371 us | 18.392 us |  3.4x   |     6.98 KiB      | 214 verts, 382 tris |
+
+As you can see, most of the time (around 4.1 us) was spent on Mesh object creation in all test cases,
+despite the usage of Unity's `AdvancedMeshAPI`. You can run those test yourself, by attaching `MeshGenBenchmark`
+to an empty game object, then pressing play. Results would be logged inside the Console window.
+
+`Custom-78` sphere mesh was generated from this set of vertex loops: `20, 16, 13, 10, 8, 6, 4`.
+![Custom Half-Sphere](resources/images/Half-Sphere(Custom-78).png)
+
+`Custom-214` sphere mesh was generated from this set of vertex loops: `44, 36, 31, 25, 20, 16, 13, 10, 8, 6, 4`.
+![Custom Half-Sphere.png](resources/images/Half-Sphere(Custom-214).png)
+
+> [!WARNING]
+> Results on the other hardware will vary. Run the benchmarks yourself to reproduce.
+
+> [!NOTE]
+> Expect better numbers inside the Player build, as Burst introduces significant overhead tied to
+> calling Burst-generated functions in editor (especially if they contain conditional scopes with
+> different code paths for different CPU instruction sets, e.g. `X86.Avx.IsAvxSupported`).
 
 ## Requirements
 
@@ -169,11 +205,11 @@ Or manually add the scoped registry to your `Packages/manifest.json`:
 ### Method 2: Unity package installer
 
 1. Download the latest `.unitypackage` from [GitHub Releases page](https://github.com/Saesentsessis/Unity-MeshGen/releases).
-    - _Direct Link:_ [Unity-Data-Shards-Installer.unitypackage](https://github.com/Saesentsessis/Unity-MeshGen/releases/download/0.1.0/Unity-MeshGen-Installer.unitypackage)
+    - _Direct Link:_ [Unity-MeshGen-Installer.unitypackage](https://github.com/Saesentsessis/Unity-MeshGen/releases/download/0.1.0/Unity-MeshGen-Installer.unitypackage)
 2. Import the downloaded package into your Unity project.
 3. The installer will automatically configure OpenUPM in your `manifest.json` file and install the package dependencies.
 
-### Method 3: Manual installation
+### Method 3: Install via Git URL
 
 1. Open Unity and navigate to `Window` -> `Package Manager`.
 2. Click on the `+` icon in the top left corner and select `Add package from git URL...`.
