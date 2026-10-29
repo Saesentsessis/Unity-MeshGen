@@ -93,7 +93,7 @@ jobs:
           fi
 
       - name: Upload release notes as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-notes
           path: ./release.md
@@ -165,7 +165,7 @@ jobs:
           customParameters: -CI true -GITHUB_ACTIONS true
 
       - name: Upload Unity Package as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: unity-installer-package
           path: ./Installer/build/Unity-Mesh-Generation-Installer.unitypackage
@@ -258,7 +258,7 @@ jobs:
           tar -xOzf "$archive" package/package.json | jq '{name, version}'
 
       - name: Upload signed UPM package as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: signed-upm-package
           path: /tmp/signed-upm-dist/*.tgz
