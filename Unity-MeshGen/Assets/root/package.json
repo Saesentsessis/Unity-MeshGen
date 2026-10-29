@@ -1,0 +1,23 @@
+{
+    "name": "com.saesentsessis.unity-meshgen",
+    "displayName": "Unity Mesh Generation",
+    "author": {
+        "name": "Saesentsessis",
+        "url": "https://github.com/Saesentsessis"
+    },
+    "keywords": [
+        "unity",
+        "mesh generation",
+        "mesh",
+        "advanced mesh api",
+        "low level"
+    ],
+    "version": "0.1.0",
+    "unity": "2022.3",
+    "description": "Pretty fast mesh generation library for Unity.",
+    "dependencies": {
+        "com.unity.collections": "2.1.4",
+        "com.unity.mathematics": "1.3.2",
+        "com.unity.burst": "1.8.0"
+    }
+}

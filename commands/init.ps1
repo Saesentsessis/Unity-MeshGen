@@ -7,15 +7,15 @@
     Replaces placeholders in file content, filenames, and directory names.
 
     Placeholders:
-    - YOUR_PACKAGE_ID                  UPM / reverse-domain identity (as provided)
-    - YOUR_PACKAGE_ID_LOWERCASE        Lowercase form used in package.json and manifests
-    - YOUR_ASSEMBLY_NAME               C# namespaces, asmdef names, and assembly filenames
-    - YOUR_PACKAGE_NAME                Display / description name (not used for code identity)
-    - YOUR_PACKAGE_NAME_INSTALLER
-    - YOUR_PACKAGE_NAME_INSTALLER_FILE
-    - YOUR_GITHUB_USERNAME_REPOSITORY
+    - com.saesentsessis.unity-meshgen                  UPM / reverse-domain identity (as provided)
+    - com.saesentsessis.unity-meshgen        Lowercase form used in package.json and manifests
+    - Saesentsessis.MeshGeneration               C# namespaces, asmdef names, and assembly filenames
+    - Unity Mesh Generation                Display / description name (not used for code identity)
+    - Unity Mesh Generation Installer
+    - Unity-Mesh-Generation-Installer
+    - Saesentsessis/Unity-MeshGen
 
-    Also renames the host Unity project folder `Unity-Package` to the GitHub
+    Also renames the host Unity project folder `Unity-MeshGen` to the GitHub
     repository name (the segment after `/` in -GitHubRepository), and rewrites
     path references accordingly. The string `Unity-Package-Template` is left alone
     so template attribution URLs stay intact.
@@ -34,7 +34,7 @@
 
 .PARAMETER PackageName
     Human-readable package display name (e.g. "Cool Package"). Used for installer
-    folder naming and other descriptive text â€” not for asmdefs or namespaces.
+    folder naming and other descriptive text — not for asmdefs or namespaces.
 
 .PARAMETER InstallerExtraPath
     Optional. Extra path segment between Assets/ and the Installer folder.
@@ -43,7 +43,7 @@
 
 .PARAMETER GitHubRepository
     GitHub "Username/Repository-Name" (e.g. "MyGitHubUsername/My-Repository-Name").
-    The repository name becomes the Unity project folder (replacing `Unity-Package`).
+    The repository name becomes the Unity project folder (replacing `Unity-MeshGen`).
 
 .EXAMPLE
     .\init.ps1 -PackageId "com.mycompany.coolpackage" -AssemblyName "CoolPackage" -PackageName "Cool Package" -GitHubRepository "myusername/cool-package"
@@ -89,6 +89,10 @@ function Test-ShouldIgnore {
 
     $RelativePath = $ItemPath.Substring($BasePath.Length).TrimStart('\', '/')
     $RelativePath = $RelativePath -replace '\\', '/'
+
+	if ($RelativePath -match "init.ps1") {
+		return $true;
+	}
 
     foreach ($Pattern in $IgnorePatterns) {
         $RegexPattern = "^" + ($Pattern -replace '\*', '[^/]+') + "(/.*)?$"
@@ -219,7 +223,7 @@ function Invoke-UnityProjectPathReplace {
 
     # Protect $ in the replacement so regex does not treat it as a group reference.
     $SafeReplacement = $UnityProjectName.Replace('$', '$$')
-    return [regex]::Replace($Text, 'Unity-Package(?!-Template)', $SafeReplacement)
+    return [regex]::Replace($Text, 'Unity-MeshGen(?!-Template)', $SafeReplacement)
 }
 
 # --- Prompt / normalize inputs ------------------------------------------------
@@ -255,7 +259,7 @@ if (-not [string]::IsNullOrWhiteSpace($InstallerExtraPath)) {
     $InstallerExtraPath = ($InstallerExtraPath.Trim() -replace '\\', '/').TrimStart('/').TrimEnd('/')
 }
 
-$UnityProjectFolderSource = "Unity-Package"
+$UnityProjectFolderSource = "Unity-MeshGen"
 $UnityProjectName = Get-UnityProjectNameFromGitHubRepository -Repository $GitHubRepository
 
 $PackageIdLowercase = $PackageId.ToLowerInvariant()
@@ -272,26 +276,26 @@ else {
 # Content replacements: installer path may include InstallerExtraPath.
 # Rename map: folder name stays the base installer name (path created separately).
 $Replacements = [ordered]@{
-    "YOUR_PACKAGE_ID_LOWERCASE"        = $PackageIdLowercase
-    "YOUR_PACKAGE_NAME_INSTALLER_FILE" = $PackageNameInstallerFile
-    "YOUR_PACKAGE_NAME_INSTALLER"      = $PackageNameInstaller
-    "YOUR_GITHUB_USERNAME_REPOSITORY"  = $GitHubRepository
-    "YOUR_ASSEMBLY_NAME"               = $AssemblyName
-    "YOUR_PACKAGE_NAME"                = $PackageName
-    "YOUR_PACKAGE_ID"                  = $PackageId
+    "com.saesentsessis.unity-meshgen"        = $PackageIdLowercase
+    "Unity-Mesh-Generation-Installer" = $PackageNameInstallerFile
+    "Unity Mesh Generation Installer"      = $PackageNameInstaller
+    "Saesentsessis/Unity-MeshGen"  = $GitHubRepository
+    "Saesentsessis.MeshGeneration"               = $AssemblyName
+    "Unity Mesh Generation"                = $PackageName
+    "com.saesentsessis.unity-meshgen"                  = $PackageId
 }
 
 $ReplacementsForRenaming = [ordered]@{
-    "YOUR_PACKAGE_ID_LOWERCASE"        = $PackageIdLowercase
-    "YOUR_PACKAGE_NAME_INSTALLER_FILE" = $PackageNameInstallerFile
-    "YOUR_PACKAGE_NAME_INSTALLER"      = $PackageNameInstallerBase
-    "YOUR_GITHUB_USERNAME_REPOSITORY"  = $GitHubRepository
-    "YOUR_ASSEMBLY_NAME"               = $AssemblyName
-    "YOUR_PACKAGE_NAME"                = $PackageName
-    "YOUR_PACKAGE_ID"                  = $PackageId
+    "com.saesentsessis.unity-meshgen"        = $PackageIdLowercase
+    "Unity-Mesh-Generation-Installer" = $PackageNameInstallerFile
+    "Unity Mesh Generation Installer"      = $PackageNameInstallerBase
+    "Saesentsessis/Unity-MeshGen"  = $GitHubRepository
+    "Saesentsessis.MeshGeneration"               = $AssemblyName
+    "Unity Mesh Generation"                = $PackageName
+    "com.saesentsessis.unity-meshgen"                  = $PackageId
 }
 
-# Longest-first to avoid partial overlaps (e.g. YOUR_PACKAGE_ID inside YOUR_PACKAGE_ID_LOWERCASE)
+# Longest-first to avoid partial overlaps (e.g. com.saesentsessis.unity-meshgen inside com.saesentsessis.unity-meshgen)
 $SortedKeys = @($Replacements.Keys | Sort-Object { $_.Length } -Descending)
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -363,7 +367,7 @@ foreach ($File in (Get-TargetFiles -RepoRoot $RepoRoot -TargetPaths $TargetPaths
 if (-not [string]::IsNullOrWhiteSpace($InstallerExtraPath)) {
     Write-Host "Creating extra path and moving installer folder..." -ForegroundColor Yellow
     $InstallerAssetsDir = Join-Path $RepoRoot "Installer/Assets"
-    $SourceFolder = Join-Path $InstallerAssetsDir "YOUR_PACKAGE_NAME_INSTALLER"
+    $SourceFolder = Join-Path $InstallerAssetsDir "Unity Mesh Generation Installer"
     $ExtraPathDir = Join-Path $InstallerAssetsDir $InstallerExtraPath
 
     if (-not (Test-Path $ExtraPathDir)) {
@@ -372,7 +376,7 @@ if (-not [string]::IsNullOrWhiteSpace($InstallerExtraPath)) {
     }
 
     if (Test-Path $SourceFolder) {
-        $DestFolder = Join-Path $ExtraPathDir "YOUR_PACKAGE_NAME_INSTALLER"
+        $DestFolder = Join-Path $ExtraPathDir "Unity Mesh Generation Installer"
         Move-Item -Path $SourceFolder -Destination $DestFolder -Force
         Write-Host "  Moved installer to: $InstallerExtraPath/" -ForegroundColor Gray
     }
@@ -383,8 +387,9 @@ if (-not [string]::IsNullOrWhiteSpace($InstallerExtraPath)) {
 Write-Host "Renaming files and directories..." -ForegroundColor Yellow
 foreach ($Item in (Get-TargetItems -RepoRoot $RepoRoot -TargetPaths $TargetPaths)) {
     $NewName = Invoke-PlaceholderReplace -Text $Item.Name -Map $ReplacementsForRenaming -SortedKeys $SortedKeys
-    if ($NewName -ne $Item.Name) {
-        Rename-Item -Path $Item.FullName -NewName $NewName
+    if ($NewName -ne $Item.Name)
+	{
+		Rename-Item -Path $Item.FullName -NewName $NewName
         Write-Host "  Renamed: $($Item.Name) -> $NewName" -ForegroundColor Gray
     }
 }
