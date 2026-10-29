@@ -1,6 +1,11 @@
 {
     "name": "Saesentsessis.MeshGeneration.Runtime",
-    "references": [],
+    "rootNamespace": "Saesentsessis.MeshGeneration",
+    "references": [
+        "Unity.Mathematics",
+        "Unity.Collections",
+        "Unity.Burst"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
