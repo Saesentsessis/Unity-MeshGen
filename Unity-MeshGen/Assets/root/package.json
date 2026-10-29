@@ -6,14 +6,17 @@
         "url": "https://github.com/Saesentsessis"
     },
     "keywords": [
-        "Unity",
-        "Mesh generation",
-        "Mesh",
-        "Advanced Mesh API",
-        "Low level"
+        "unity",
+        "mesh generation",
+        "mesh",
+        "advanced mesh api",
+        "low level"
     ],
     "version": "0.1.0",
-    "unity": "6000.0",
+    "unity": "2022.3",
     "description": "Pretty fast mesh generation library for Unity.",
-    "dependencies": {}
+    "dependencies": {
+        "com.unity.collections": "2.1.4",
+        "com.unity.burst": "1.8.0"
+    }
 }
