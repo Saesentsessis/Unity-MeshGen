@@ -216,6 +216,24 @@ namespace Saesentsessis.MeshGeneration
 			
 			GenerateHollowHalfSphereMeshData(descriptor.BandVertexCounts, descriptor.VertexCount, verticesPtr, indicesPtr);
 		}
+
+		/// <summary>
+		/// Generates hollow half-sphere mesh data from <see cref="HollowHalfSphereMeshDescriptor"/>.
+		/// There are zero safety checks inside this method, so the caller should ensure, that the provided
+		/// native arrays are correctly sized and that the descriptor contains valid data.
+		/// </summary>
+		/// <param name="descriptor">Hollow half-sphere descriptor.</param>
+		/// <param name="vertices">Resulting vertex buffer, owned by the caller.</param>
+		/// <param name="indices">Resulting index buffer, owned by the caller.</param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static unsafe void GenerateHollowHalfSphereMeshData(in HollowHalfSphereMeshDescriptor descriptor,
+			NativeSlice<float3> vertices, NativeSlice<ushort> indices)
+		{
+			var verticesPtr = (float3*)vertices.GetUnsafePtr();
+			var indicesPtr = (ushort*)indices.GetUnsafePtr();
+			
+			GenerateHollowHalfSphereMeshData(descriptor.BandVertexCounts, descriptor.VertexCount, verticesPtr, indicesPtr);
+		}
 		
 		/// <summary>
 		/// Generates hollow half-sphere mesh data from <see cref="HollowHalfSphereMeshDescriptor"/>.
@@ -228,6 +246,24 @@ namespace Saesentsessis.MeshGeneration
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static unsafe void GenerateHollowHalfSphereMeshData(in HollowHalfSphereMeshDescriptor descriptor,
 			NativeArray<float3> vertices, NativeArray<int> indices)
+		{
+			var verticesPtr = (float3*)vertices.GetUnsafePtr();
+			var indicesPtr = (int*)indices.GetUnsafePtr();
+			
+			GenerateHollowHalfSphereMeshData(descriptor.BandVertexCounts, descriptor.VertexCount, verticesPtr, indicesPtr);
+		}
+
+		/// <summary>
+		/// Generates hollow half-sphere mesh data from <see cref="HollowHalfSphereMeshDescriptor"/>.
+		/// There are zero safety checks inside this method, so the caller should ensure, that the provided
+		/// native arrays are correctly sized and that the descriptor contains valid data.
+		/// </summary>
+		/// <param name="descriptor">Hollow half-sphere descriptor.</param>
+		/// <param name="vertices">Resulting vertex buffer, owned by the caller.</param>
+		/// <param name="indices">Resulting index buffer, owned by the caller.</param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static unsafe void GenerateHollowHalfSphereMeshData(in HollowHalfSphereMeshDescriptor descriptor,
+			NativeSlice<float3> vertices, NativeSlice<int> indices)
 		{
 			var verticesPtr = (float3*)vertices.GetUnsafePtr();
 			var indicesPtr = (int*)indices.GetUnsafePtr();
