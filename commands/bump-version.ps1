@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 <#
 .SYNOPSIS
     Automated version bumping script for Unity Package project
@@ -38,27 +38,27 @@ $ErrorActionPreference = "Stop"
 # Version file locations (relative to script root)
 $VersionFiles = @(
     @{
-        Path        = "Unity-Package/Assets/root/package.json"
+        Path        = "Unity-MeshGen/Assets/root/package.json"
         Pattern     = '"version":\s*"[\d\.]+"'
         Replace     = '"version": "{VERSION}"'
         Description = "Unity package version"
     },
     @{
-        Path        = "Installer/Assets/YOUR_PACKAGE_NAME_INSTALLER/Installer.cs"
+        Path        = "Installer/Assets/Unity Mesh Generation Installer/Installer.cs"
         Pattern     = 'public const string Version = "[\d\.]+";'
         Replace     = 'public const string Version = "{VERSION}";'
         Description = "Installer C# version constant"
     },
     @{
-        Path        = "Unity-Package/Assets/root/README.md"
-        Pattern     = "https://github\.com/YOUR_GITHUB_USERNAME_REPOSITORY/releases/download/[\d\.]+/YOUR_PACKAGE_NAME_INSTALLER_FILE\.unitypackage"
-        Replace     = "https://github.com/YOUR_GITHUB_USERNAME_REPOSITORY/releases/download/{VERSION}/YOUR_PACKAGE_NAME_INSTALLER_FILE.unitypackage"
+        Path        = "Unity-MeshGen/Assets/root/README.md"
+        Pattern     = "https://github\.com/Saesentsessis/Unity-MeshGen/releases/download/[\d\.]+/Unity-Mesh-Generation-Installer\.unitypackage"
+        Replace     = "https://github.com/Saesentsessis/Unity-MeshGen/releases/download/{VERSION}/Unity-Mesh-Generation-Installer.unitypackage"
         Description = "Package README download URL"
     },
     @{
         Path        = "README.md"
-        Pattern     = "https://github\.com/YOUR_GITHUB_USERNAME_REPOSITORY/releases/download/[\d\.]+/YOUR_PACKAGE_NAME_INSTALLER_FILE\.unitypackage"
-        Replace     = "https://github.com/YOUR_GITHUB_USERNAME_REPOSITORY/releases/download/{VERSION}/YOUR_PACKAGE_NAME_INSTALLER_FILE.unitypackage"
+        Pattern     = "https://github\.com/Saesentsessis/Unity-MeshGen/releases/download/[\d\.]+/Unity-Mesh-Generation-Installer\.unitypackage"
+        Replace     = "https://github.com/Saesentsessis/Unity-MeshGen/releases/download/{VERSION}/Unity-Mesh-Generation-Installer.unitypackage"
         Description = "Repository README download URL"
     }
 )
@@ -82,7 +82,7 @@ function Test-SemanticVersion {
 
 function Get-CurrentVersion {
     # Extract current version from package.json
-    $packageJsonPath = "Unity-Package/Assets/root/package.json"
+    $packageJsonPath = "Unity-MeshGen/Assets/root/package.json"
     if (-not (Test-Path $packageJsonPath)) {
         throw "Could not find package.json at: $packageJsonPath"
     }
