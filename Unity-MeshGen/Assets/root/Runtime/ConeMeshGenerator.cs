@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using Saesentsessis.MeshGeneration.Shapes;
 using Unity.Burst;
 using Unity.Collections;
@@ -30,6 +31,7 @@ namespace Saesentsessis.MeshGeneration
 		/// <param name="descriptor">Hollow cone descriptor, that can be obtained using <see cref="CreateHollowConeMeshDescriptor"/> function.</param>
 		/// <param name="vertices">Vertex buffer, owned by the caller.</param>
 		/// <param name="indices">Index buffer, owned by the caller.</param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static unsafe void GenerateHollowConeMeshData(in HollowConeMeshDescriptor descriptor,
 			NativeArray<float3> vertices, NativeArray<ushort> indices)
 		{
@@ -47,12 +49,49 @@ namespace Saesentsessis.MeshGeneration
 		/// <param name="descriptor">Hollow cone descriptor, that can be obtained using <see cref="CreateHollowConeMeshDescriptor"/> function.</param>
 		/// <param name="vertices">Vertex buffer, owned by the caller.</param>
 		/// <param name="indices">Index buffer, owned by the caller.</param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static unsafe void GenerateHollowConeMeshData(in HollowConeMeshDescriptor descriptor,
+			NativeSlice<float3> vertices, NativeSlice<ushort> indices)
+		{
+			var verticesPtr = (float3*)vertices.GetUnsafePtr();
+			var indicesPtr = (ushort*)indices.GetUnsafePtr();
+
+			GenerateHollowConeMeshData(descriptor.Resolution, descriptor.HalfAngleRadians, verticesPtr, indicesPtr);
+		}
+
+		/// <summary>
+		/// Generates hollow cone mesh data from <see cref="HollowConeMeshDescriptor"/>.
+		/// There are zero safety checks inside this method, so the caller should ensure, that the provided
+		/// native arrays are correctly sized and that the descriptor contains valid data.
+		/// </summary>
+		/// <param name="descriptor">Hollow cone descriptor, that can be obtained using <see cref="CreateHollowConeMeshDescriptor"/> function.</param>
+		/// <param name="vertices">Vertex buffer, owned by the caller.</param>
+		/// <param name="indices">Index buffer, owned by the caller.</param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static unsafe void GenerateHollowConeMeshData(in HollowConeMeshDescriptor descriptor,
 			NativeArray<float3> vertices, NativeArray<int> indices)
 		{
 			var verticesPtr = (float3*)vertices.GetUnsafePtr();
 			var indicesPtr = (int*)indices.GetUnsafePtr();
 
+			GenerateHollowConeMeshData(descriptor.Resolution, descriptor.HalfAngleRadians, verticesPtr, indicesPtr);
+		}
+
+		/// <summary>
+		/// Generates hollow cone mesh data from <see cref="HollowConeMeshDescriptor"/>.
+		/// There are zero safety checks inside this method, so the caller should ensure, that the provided
+		/// native arrays are correctly sized and that the descriptor contains valid data.
+		/// </summary>
+		/// <param name="descriptor">Hollow cone descriptor, that can be obtained using <see cref="CreateHollowConeMeshDescriptor"/> function.</param>
+		/// <param name="vertices">Vertex buffer, owned by the caller.</param>
+		/// <param name="indices">Index buffer, owned by the caller.</param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static unsafe void GenerateHollowConeMeshData(in HollowConeMeshDescriptor descriptor,
+			NativeSlice<float3> vertices, NativeSlice<int> indices)
+		{
+			var verticesPtr = (float3*)vertices.GetUnsafePtr();
+			var indicesPtr = (int*)indices.GetUnsafePtr();
+			
 			GenerateHollowConeMeshData(descriptor.Resolution, descriptor.HalfAngleRadians, verticesPtr, indicesPtr);
 		}
 
