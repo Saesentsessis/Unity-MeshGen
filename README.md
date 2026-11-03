@@ -1,205 +1,229 @@
-# [Unity Package Template](https://github.com/Saesentsessis/Unity-Package-Template)
+<div align="center">
+    <h1>Unity MeshGen</h1>
 
-Unity Editor supports NPM-style packages through UPM (Unity Package Manager). Versioning and dependencies make packages far more flexible than classic plugins.
+[![OpenUPM](https://img.shields.io/npm/v/com.saesentsessis.unity-meshgen?label=OpenUPM&registry_uri=https://package.openupm.com&labelColor=333A41 'OpenUPM package')](https://openupm.com/packages/com.saesentsessis.unity-meshgen/)
+[![Unity Editor](https://img.shields.io/badge/Editor-X?style=flat&logo=unity&labelColor=333A41&color=2A2A2A 'Unity Editor supported')](https://unity.com/releases/editor/archive)
+[![Unity Runtime](https://img.shields.io/badge/Runtime-X?style=flat&logo=unity&labelColor=333A41&color=2A2A2A 'Unity Runtime supported')](https://unity.com/releases/editor/archive)
+[![Tests Passed](https://github.com/Saesentsessis/Unity-MeshGen/actions/workflows/release.yml/badge.svg 'Tests Passed')](https://github.com/Saesentsessis/Unity-MeshGen/actions/workflows/release.yml)<br/>
+[![Releases](https://img.shields.io/github/release/Saesentsessis/Unity-MeshGen.svg)](https://github.com/Saesentsessis/Unity-MeshGen/releases)
+[![Stars](https://img.shields.io/github/stars/Saesentsessis/Unity-MeshGen 'Stars')](https://github.com/Saesentsessis/Unity-MeshGen/stargazers)
+[![License](https://img.shields.io/github/license/Saesentsessis/Unity-MeshGen?label=License&labelColor=333A41)](https://github.com/Saesentsessis/Unity-MeshGen/blob/main/LICENSE)
 
-This template turns a fresh repository into a real Unity package: scaffold, multi-version tests, installer `.unitypackage`, GitHub Actions CI/CD, and OpenUPM-ready signed releases.
+</div>
 
-Based on [Ivan Murzak’s Unity-Package-Template](https://github.com/IvanMurzak/Unity-Package-Template). This fork is maintained by **Saesentsessis** under the MIT license.
+**Unity MeshGen** is a fast, Burst-compatible library for generating simple procedural meshes in Unity.
 
-Template copyright on `LICENSE` is held by Saesentsessis. After you run `init.ps1`, set the package `author` in `package.json` to your own credentials.
+## Key Types
 
-# Steps to make your package
+| Type                 | Description                                                            |
+|----------------------|------------------------------------------------------------------------|
+| `MeshGenerator`      | Main entry point for all of the mesh generation functions              |
+| `MeshGeneratorUtils` | A pack of vectorized helper functions that are used in mesh generation |
 
-### 1. Create a repository from this template
+## Supported Shapes
 
-Use GitHub **Use this template** on [Saesentsessis/Unity-Package-Template](https://github.com/Saesentsessis/Unity-Package-Template), or fork and clone as you prefer.
+| Shape              | Descriptor                       | Function                                             |
+|--------------------|----------------------------------|------------------------------------------------------|
+| Hollow Cone        | `HollowConeMeshDescriptor`       | `MeshGenerator.CreateHollowConeMeshDescriptor`       |
+| Hollow Half-sphere | `HollowHalfSphereMeshDescriptor` | `MeshGenerator.CreateHollowHalfSphereMeshDescriptor` |
 
-### 2. Clone your new repository
+> [!NOTE]
+> Any shape descriptor that has `Hollow` prefix in it comes with a hole. For example, a cone
+> would not have a base filled with triangles, a half-sphere would not have a cap on the equator.
 
-### 3. Initialize the project
+## Quick Start
 
-Run the initialization script to rename the package and replace all placeholders. Package id and assembly root are chosen **per repository** — never bake product identity into the template itself.
+Create a specific mesh descriptor - compact data structure that would be passed right inside the
+generation function.
 
-```powershell
-./commands/init.ps1 `
-  -PackageId "com.company.package" `
-  -AssemblyName "MyPackage" `
-  -PackageName "My Package" `
-  -GitHubRepository "YourGitHubUsername/your-repo-name"
+```csharp
+using Saesentsessis.MeshGeneration;
+using Saesentsessis.MeshGeneration.Shapes;
+
+var resolution = 16;
+var halfAngleDegrees = 45f;
+
+// Create a reusable descriptor, that describes the shape
+var descriptor = MeshGenerator.CreateHollowConeMeshDescriptor(resolution, halfAngleDegrees);
+
+// Then, either generate the mesh via an extension method
+var coneMesh = descriptor.CreateMesh();
+
+// Or call the method manually, result would be the same
+var coneMesh2 = MeshGenerator.CreateHollowConeMesh(in descriptor);
 ```
 
-| Parameter | Placeholder(s) | Purpose |
-|-----------|----------------|---------|
-| `PackageId` | `YOUR_PACKAGE_ID`, `YOUR_PACKAGE_ID_LOWERCASE` | UPM name (`package.json`), test manifests, release `.tgz` prefix, `Installer.PackageId` |
-| `AssemblyName` | `YOUR_ASSEMBLY_NAME` | Asmdef names/filenames, C# namespaces, CI `buildMethod` |
-| `PackageName` | `YOUR_PACKAGE_NAME` (+ installer variants) | Display / descriptive text and installer folder naming only |
+You can also generate mesh data exclusively inside two native arrays - vertices and indices.
 
-This script will:
-- Rename directories and files (including `YOUR_ASSEMBLY_NAME.*.asmdef`).
-- Replace the placeholders above in file contents.
+```csharp
+using Unity.Collections;
+using Unity.Mathematics;
 
-### 4. Update `package.json`
+// Allocate the resulting arrays
+var vertices = new NativeArray<float3>(descriptor.VertexCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+var indices = new NativeArray<ushort>(descriptor.IndexCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
-Open `Unity-Package/Assets/root/package.json` and update:
-- `description`
-- `author`
-- `keywords`
-- `unity` (minimum supported Unity version)
+// Call the shape-specific function, passing a descriptor, vertices and indices array
+MeshGenerator.GenerateHollowConeMeshData(in descriptor, vertices, indices);
 
-### 5. Generate `.meta` files
+// Now you can create your own mesh object or do whatever you want with the generated data
+// After you've done with it, don't forget to call dispose on the arrays
+vertices.Dispose();
+indices.Dispose();
+```
 
-#### Using the script
+> [!NOTE]
+> Some of the descriptors may inherit from `IDisposable`, so don't forget to call `Dispose()` method on
+> them, or wrap such structures inside a `using` block.
 
-Open Unity projects so Unity generates `.meta` files.
+Some of the shapes may have special descriptor creation functions. Let's take as example a `HollowHalfSphere`.
+`MeshGenerator.CreateHollowHalfSphereMeshDescriptor` has several overloads for this function, including the
+generation of the half-sphere from custom array of vertex loop sizes, that is represented by `NativeArray<int>`.
 
-**On Mac and Linux**:
+```csharp
+// Allocate a buffer that would contain vertex loop sizes
+using var bands = new NativeArray<int>(5, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+
+// It is not necessary to fill loop sizes in descending order
+bands[0] = 12;
+bands[1] = 9;
+bands[2] = 7;
+bands[3] = 5;
+bands[4] = 4;
+
+// This method would create a descriptor from pre-defined set of vertex loops,
+// from 12 vertices at the equator down to a single vertex at apex.
+var descriptor = MeshGenerator.CreateHollowHalfSphereMeshDescriptor(bands);
+
+// Then you can generate mesh or mesh data using the examples provided above...
+var mesh = descriptor.CreateMesh();
+```
+
+## Vertex Data
+
+Currently, all generation functions produce no vertex attributes other than position.
+Triangulation is included, although all generated meshes lack normals. Index size is
+selected depending on vertex buffer capacity (16-bit indices for meshes with `<= 65536`
+verts, otherwise 32-bit indices).
+
+## Benchmarks
+
+Configuration: Unity 6000.7.0b4 (Editor), Intel Core i5-11400F.
+50 warmup iterations, 100000 iterations, 10 runs median.
+Burst safety checks and leak detection enabled.
+
+### Mesh Data Generation
+
+**Baseline**: A straightforward managed implementation. No Burst, no Jobs, no native memory, no
+`unsafe` context.
+
+**MeshGen**: Pre-allocated `NativeArray`'s, calls to shape-specific `MeshGenerator.Generate{Shape}MeshData`
+function only. Zero managed allocations, pure generation performance.
+
+| Shape                               | MeshGen | Baseline  | Speedup | Baseline GC Alloc (per call) | Geometry Data       |
+|-------------------------------------|:-------:|:---------:|:-------:|:----------------------------:|---------------------|
+| Hollow Cone (64 resolution)         | 116 ns  | 3.045 us  |  26.5x  |           1.51 KiB           | 65 verts, 64 tris   |
+| Hollow Cone (256 resolution)        | 256 ns  | 11.639 us |  44.7x  |           6.01 KiB           | 257 verts, 256 tris |
+| Hollow Half-Sphere (64 resolution)  | 305 ns  | 7.129 us  |  23.9x  |           3.62 KiB           | 125 verts, 184 tris |
+| Hollow Half-Sphere (256 resolution) | 853 ns  | 33.011 us |  38.9x  |          14.87 KiB           | 509 verts, 760 tris |
+| Hollow Half-Sphere (Custom-78)      | 389 ns  | 4.577 us  |  11.8x  |           2.48 KiB           | 78 verts, 134 tris  |
+| Hollow Half-Sphere (Custom-214)     | 840 ns  | 12.148 us |  14.5x  |           6.98 KiB           | 214 verts, 382 tris |
+
+Further optimizations are possible. See the roadmap.
+
+### Descriptor + Mesh Object
+
+**Baseline**: A straightforward managed implementation. No Burst, no Jobs, no native memory, no
+`unsafe` context.
+
+**MeshGen**: Nothing is pre-allocated, full generation lifecycle: create `{Shape}MeshDescriptor`,
+pass it to a mesh object generation function, attach mesh to a `MeshFilter.sharedMesh`. Time
+required to destroy the generated mesh or upload mesh data on the GPU are not accounted.
+
+| Shape                               | MeshGen  | Baseline  | Speedup | Baseline GC Alloc | Geometry Data       |
+|-------------------------------------|:--------:|:---------:|:-------:|:-----------------:|---------------------|
+| Hollow Cone (64 resolution)         | 4.175 us | 6.996 us  |  1.7x   |     1.51 KiB      | 65 verts, 64 tris   |
+| Hollow Cone (256 resolution)        | 4.313 us | 17.170 us |  4.0x   |     6.01 KiB      | 257 verts, 256 tris |
+| Hollow Half-Sphere (64 resolution)  | 4.637 us | 12.197 us |  2.7x   |     3.62 KiB      | 125 verts, 184 tris |
+| Hollow Half-Sphere (256 resolution) | 5.163 us | 43.462 us |  8.5x   |     14.87 KiB     | 509 verts, 760 tris |
+| Hollow Half-Sphere (Custom-78)      | 4.730 us | 9.061 us  |  1.9x   |     2.48 KiB      | 78 verts, 134 tris  |
+| Hollow Half-Sphere (Custom-214)     | 5.371 us | 18.392 us |  3.4x   |     6.98 KiB      | 214 verts, 382 tris |
+
+As you can see, most of the time (around 4.1 us) was spent on Mesh object creation in all test cases,
+despite the usage of Unity's `AdvancedMeshAPI`. You can run those test yourself, by attaching `MeshGenBenchmark`
+to an empty game object, then pressing play. Results would be logged inside the Console window.
+
+`Custom-78` sphere mesh was generated from this set of vertex loops: `20, 16, 13, 10, 8, 6, 4`.
+![Custom Half-Sphere](resources/images/Half-Sphere(Custom-78).png)
+
+`Custom-214` sphere mesh was generated from this set of vertex loops: `44, 36, 31, 25, 20, 16, 13, 10, 8, 6, 4`.
+![Custom Half-Sphere.png](resources/images/Half-Sphere(Custom-214).png)
+
+> [!WARNING]
+> Results on the other hardware will vary. Run the benchmarks yourself to reproduce.
+
+> [!NOTE]
+> Expect better numbers inside the Player build, as Burst introduces significant overhead tied to
+> calling Burst-generated functions in editor (especially if they contain conditional scopes with
+> different code paths for different CPU instruction sets, e.g. `X86.Avx.IsAvxSupported`).
+
+## Requirements
+
+- Unity **6000.0** or newer
+- [`com.unity.collections`](https://docs.unity3d.com/Packages/com.unity.collections@latest) **2.1.4** or newer
+- [`com.unity.burst`](https://docs.unity3d.com/Packages/com.unity.burst@latest) **1.8.0** or newer
+
+## Installation
+
+### Method 1: OpenUPM (Recommended)
+
+You can install this package via the [OpenUPM](https://openupm.com/) CLI:
 
 ```bash
-./commands/open-all-projects-unix.sh
+openupm add com.saesentsessis.unity-meshgen
 ```
 
-**On Windows**:
+Or manually add the scoped registry to your `Packages/manifest.json`:
 
-```powershell
-./commands/open-all-projects-windows.ps1
+```json
+{
+  "dependencies": {
+    "com.saesentsessis.unity-meshgen": "0.1.0"
+  },
+  "scopedRegistries": [
+    {
+      "name": "OpenUPM",
+      "url": "https://package.openupm.com",
+      "scopes": [
+        "com.saesentsessis"
+      ]
+    }
+  ]
+}
 ```
 
-#### Or manually
+### Method 2: Unity package installer
 
-- Open Unity Hub.
-- Add the `Installer` folder as a project.
-- Add the `Unity-Package` folder as a project.
-- Open both projects in the Unity Editor to generate `.meta` files.
+1. Download the latest `.unitypackage` from [GitHub Releases page](https://github.com/Saesentsessis/Unity-MeshGen/releases).
+    - _Direct Link:_ [Unity-MeshGen-Installer.unitypackage](https://github.com/Saesentsessis/Unity-MeshGen/releases/download/0.1.0/Unity-MeshGen-Installer.unitypackage)
+2. Import the downloaded package into your Unity project.
+3. The installer will automatically configure OpenUPM in your `manifest.json` file and install the package dependencies.
 
-### 6. Add files under `Unity-Package/Assets/root`
+### Method 3: Install via Git URL
 
-See [Unity package layout guidelines](https://docs.unity3d.com/Manual/cus-layout.html):
+1. Open Unity and navigate to `Window` -> `Package Manager`.
+2. Click on the `+` icon in the top left corner and select `Add package from git URL...`.
+3. ```
+   https://github.com/Saesentsessis/Unity-MeshGen.git?path=Unity-MeshGen/Assets/root
+   ```
+4. Click Add.
 
-```text
-  <root>
-  ├── package.json
-  ├── README.md
-  ├── CHANGELOG.md
-  ├── LICENSE.md
-  ├── Third Party Notices.md
-  ├── Editor
-  │   ├── [company-name].[package-name].Editor.asmdef
-  │   └── EditorExample.cs
-  ├── Runtime
-  │   ├── [company-name].[package-name].asmdef
-  │   └── RuntimeExample.cs
-  ├── Tests
-  │   ├── Editor
-  │   │   ├── [company-name].[package-name].Editor.Tests.asmdef
-  │   │   └── EditorExampleTest.cs
-  │   └── Runtime
-  │        ├── [company-name].[package-name].Tests.asmdef
-  │        └── RuntimeExampleTest.cs
-  ├── Samples~
-  │        ├── SampleFolder1
-  │        ├── SampleFolder2
-  │        └── ...
-  └── Documentation~
-       └── [package-name].md
+You can specify exact release version of this package like this:
+
+```
+https://github.com/Saesentsessis/Unity-MeshGen.git?path=Unity-MeshGen/Assets/root#0.1.0
 ```
 
-# Optional steps
+## License
 
-### 1. Version management
-
-To update the package version across all files (`package.json`, `Installer.cs`, etc.):
-
-```powershell
-.\commands\bump-version.ps1 -NewVersion "1.0.1"
-```
-
-### 2. Setup CI/CD
-
-Workflows ship as opt-in samples. The reusable job is already active at [`.github/workflows/test_unity_plugin.yml`](.github/workflows/test_unity_plugin.yml).
-
-CI uses **GameCI** (`unity-test-runner@v4`, `unity-builder@v5`), a pinned disk-cleanup action, and a matrix covering:
-
-| Unity version   | Test modes                          | Platforms (Linux images)   |
-|-----------------|-------------------------------------|----------------------------|
-| `2022.3.62f3`   | editmode, playmode, standalone      | `base`, `windows-mono`     |
-| `2023.2.22f1`   | editmode, playmode, standalone      | `base`, `windows-mono`     |
-| `6000.3.1f1`    | editmode, playmode, standalone      | `base`, `windows-mono`     |
-
-The release pipeline also builds the installer `.unitypackage`, signs a UPM `.tgz` (hard gate), and publishes a GitHub Release with both assets.
-
-PR workflows use the `pull_request` event (not `pull_request_target`), so secrets are only available to trusted workflow runs from the repository.
-
-1. **Configure GitHub Secrets**
-
-   Go to `Settings` > `Secrets and variables` > `Actions` > `New repository secret` and add:
-   - `UNITY_EMAIL`: Your Unity account email.
-   - `UNITY_PASSWORD`: Your Unity account password.
-   - `UNITY_LICENSE`: Content of your `Unity_lic.ulf` file.
-     - Windows: `C:/ProgramData/Unity/Unity_lic.ulf`
-     - Mac: `/Library/Application Support/Unity/Unity_lic.ulf`
-     - Linux: `~/.local/share/unity3d/Unity/Unity_lic.ulf`
-
-   **Package signing secrets (Unity 6.3+ signed packages)**
-
-   Starting with Unity 6.3, Package Manager warns about unsigned packages. The release workflow signs your package via Unity's UPM CLI, and **signing is a hard gate** — if these secrets are missing or misconfigured, the release fails and no GitHub Release is created. Add three more repository secrets:
-
-   - `UPM_ORG_ID` — your Unity **organization ID**.
-   - `UPM_SERVICE_ACCOUNT_KEY_ID` — a Unity Cloud **service-account key ID**.
-   - `UPM_SERVICE_ACCOUNT_KEY_SECRET` — the matching **service-account key secret** (shown only once).
-
-   How to obtain them (in the [Unity Cloud Dashboard](https://cloud.unity.com/)):
-
-   1. Pick the **organization** that will own/sign your package (Unity Cloud → Organizations → note its **Organization ID** → that's `UPM_ORG_ID`).
-   2. **Administration → Service Accounts → Create service account.** In its **Keys** section, **Create key** → record the **Key ID** (`UPM_SERVICE_ACCOUNT_KEY_ID`) and **Secret key** (`UPM_SERVICE_ACCOUNT_KEY_SECRET`) — the secret is shown only once.
-   3. Give the service account the **"Package Manager Package Signer"** role for that organization.
-
-   **Critical — three things must line up, or signing fails with "User does not have permission to sign package … with the provided credentials and organization":**
-
-   - The **service account must belong to the same organization** as `UPM_ORG_ID`.
-   - That **organization must be authorized to sign your package's namespace** (the reverse-domain name in `package.json`, e.g. `com.company.package`).
-   - A brand-new org won't be authorized for a namespace until it **claims** it. To claim it, do a **one-time interactive sign in the Unity Editor**: Package Manager → select your package → Export → in the **Authoring Org** dropdown pick that organization → sign. After that one interactive sign, the CI service account can sign the same package automatically.
-
-   > Tip: the Unity UPM CLI can only *sign* a namespace the org already owns — it cannot *claim* one. The interactive Editor sign above is the only way to establish the association.
-
-   See [`docs/openupm-signing.md`](docs/openupm-signing.md) for the full setup, verification, and troubleshooting guide.
-
-2. **Enable workflows**
-
-   Rename the sample workflow files to enable them:
-   - `.github/workflows/release.yml-sample` → `.github/workflows/release.yml`
-   - `.github/workflows/test_pull_request.yml-sample` → `.github/workflows/test_pull_request.yml`
-
-3. **Adjust Unity versions (if needed)**
-
-   Edit the matrices in both enabled `.yml` files if your support matrix differs from the defaults above.
-
-4. **Automatic deployment**
-
-   The release workflow runs on push to `main` when `package.json` version does not already have a matching Git tag. It tests across the full matrix, exports the installer, signs the UPM package, then creates the GitHub Release atomically.
-
-# Final polishing
-
-- Replace this repository `README.md` with information about your package.
-- Copy the package-facing `README.md` into `Unity-Package/Assets/root` as well (a stub is provided there for you to edit).
-
-> Everything outside of the `root` folder is not included in the distributed UPM package. It can still be used for testing or documenting the repository.
-
-### 1. Deploy to any registry you like
-
-- [Deploy to OpenUPM](docs/Deploy-OpenUPM.md) (recommended)
-- [Deploy using GitHub](docs/Deploy-GitHub.md)
-- [Deploy to npmjs.com](docs/Deploy-npmjs.md)
-
-### 2. Install your package into a Unity project
-
-When your package is distributed, install it into **another** Unity project (not this template’s test project).
-
-- [Install OpenUPM-CLI](https://github.com/openupm/openupm-cli#installation)
-- Open a command line at the root of the Unity project (the folder that contains `Assets`)
-- Run:
-
-  ```bash
-  openupm add YOUR_PACKAGE_ID_LOWERCASE
-  ```
-
-  (After `init.ps1`, replace with your real package name / id as documented by OpenUPM.)
+Licensed under the [MIT License](LICENSE).
