@@ -140,14 +140,14 @@ Further optimizations are possible. See the roadmap.
 pass it to a mesh object generation function, attach mesh to a `MeshFilter.sharedMesh`. Time
 required to destroy the generated mesh or upload mesh data on the GPU are not accounted.
 
-| Shape                               | MeshGen  | Baseline  | Speedup | Baseline GC Alloc | Geometry Data       |
-|-------------------------------------|:--------:|:---------:|:-------:|:-----------------:|---------------------|
-| Hollow Cone (64 resolution)         | 4.175 us | 6.996 us  |  1.7x   |     1.51 KiB      | 65 verts, 64 tris   |
-| Hollow Cone (256 resolution)        | 4.313 us | 17.170 us |  4.0x   |     6.01 KiB      | 257 verts, 256 tris |
-| Hollow Half-Sphere (64 resolution)  | 4.637 us | 12.197 us |  2.7x   |     3.62 KiB      | 125 verts, 184 tris |
-| Hollow Half-Sphere (256 resolution) | 5.163 us | 43.462 us |  8.5x   |     14.87 KiB     | 509 verts, 760 tris |
-| Hollow Half-Sphere (Custom-78)      | 4.730 us | 9.061 us  |  1.9x   |     2.48 KiB      | 78 verts, 134 tris  |
-| Hollow Half-Sphere (Custom-214)     | 5.371 us | 18.392 us |  3.4x   |     6.98 KiB      | 214 verts, 382 tris |
+| Shape                               | MeshGen  | Baseline  | Speedup | Baseline GC Alloc (per call) | Geometry Data       |
+|-------------------------------------|:--------:|:---------:|:-------:|:----------------------------:|---------------------|
+| Hollow Cone (64 resolution)         | 4.175 us | 6.996 us  |  1.7x   |           1.51 KiB           | 65 verts, 64 tris   |
+| Hollow Cone (256 resolution)        | 4.313 us | 17.170 us |  4.0x   |           6.01 KiB           | 257 verts, 256 tris |
+| Hollow Half-Sphere (64 resolution)  | 4.637 us | 12.197 us |  2.7x   |           3.62 KiB           | 125 verts, 184 tris |
+| Hollow Half-Sphere (256 resolution) | 5.163 us | 43.462 us |  8.5x   |          14.87 KiB           | 509 verts, 760 tris |
+| Hollow Half-Sphere (Custom-78)      | 4.730 us | 9.061 us  |  1.9x   |           2.48 KiB           | 78 verts, 134 tris  |
+| Hollow Half-Sphere (Custom-214)     | 5.371 us | 18.392 us |  3.4x   |           6.98 KiB           | 214 verts, 382 tris |
 
 As you can see, most of the time (around 4.1 us) was spent on Mesh object creation in all test cases,
 despite the usage of Unity's `AdvancedMeshAPI`. You can run those test yourself, by attaching `MeshGenBenchmark`
