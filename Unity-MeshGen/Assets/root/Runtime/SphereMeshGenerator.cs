@@ -207,9 +207,10 @@ namespace Saesentsessis.MeshGeneration
 		/// <param name="descriptor">Hollow half-sphere descriptor.</param>
 		/// <param name="vertices">Resulting vertex buffer, owned by the caller.</param>
 		/// <param name="indices">Resulting index buffer, owned by the caller.</param>
+		/// <param name="baseVertexIndex">Optional index offset.</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static unsafe void GenerateHollowHalfSphereMeshData(in HollowHalfSphereMeshDescriptor descriptor,
-			NativeArray<float3> vertices, NativeArray<ushort> indices)
+			NativeArray<float3> vertices, NativeArray<ushort> indices, ushort baseVertexIndex = 0)
 		{
 			var verticesPtr = (float3*)vertices.GetUnsafePtr();
 			var indicesPtr = (ushort*)indices.GetUnsafePtr();
@@ -225,9 +226,10 @@ namespace Saesentsessis.MeshGeneration
 		/// <param name="descriptor">Hollow half-sphere descriptor.</param>
 		/// <param name="vertices">Resulting vertex buffer, owned by the caller.</param>
 		/// <param name="indices">Resulting index buffer, owned by the caller.</param>
+		/// <param name="baseVertexIndex">Optional index offset.</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static unsafe void GenerateHollowHalfSphereMeshData(in HollowHalfSphereMeshDescriptor descriptor,
-			NativeSlice<float3> vertices, NativeSlice<ushort> indices)
+			NativeSlice<float3> vertices, NativeSlice<ushort> indices, ushort baseVertexIndex = 0)
 		{
 			var verticesPtr = (float3*)vertices.GetUnsafePtr();
 			var indicesPtr = (ushort*)indices.GetUnsafePtr();
@@ -243,14 +245,15 @@ namespace Saesentsessis.MeshGeneration
 		/// <param name="descriptor">Hollow half-sphere descriptor.</param>
 		/// <param name="vertices">Resulting vertex buffer, owned by the caller.</param>
 		/// <param name="indices">Resulting index buffer, owned by the caller.</param>
+		/// <param name="baseVertexIndex">Optional index offset.</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static unsafe void GenerateHollowHalfSphereMeshData(in HollowHalfSphereMeshDescriptor descriptor,
-			NativeArray<float3> vertices, NativeArray<int> indices)
+			NativeArray<float3> vertices, NativeArray<int> indices, int baseVertexIndex = 0)
 		{
 			var verticesPtr = (float3*)vertices.GetUnsafePtr();
 			var indicesPtr = (int*)indices.GetUnsafePtr();
 			
-			GenerateHollowHalfSphereMeshData(descriptor.BandVertexCounts, descriptor.VertexCount, verticesPtr, indicesPtr);
+			GenerateHollowHalfSphereMeshData(descriptor.BandVertexCounts, descriptor.VertexCount, verticesPtr, indicesPtr, baseVertexIndex);
 		}
 
 		/// <summary>
@@ -261,14 +264,15 @@ namespace Saesentsessis.MeshGeneration
 		/// <param name="descriptor">Hollow half-sphere descriptor.</param>
 		/// <param name="vertices">Resulting vertex buffer, owned by the caller.</param>
 		/// <param name="indices">Resulting index buffer, owned by the caller.</param>
+		/// <param name="baseVertexIndex">Optional index offset.</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static unsafe void GenerateHollowHalfSphereMeshData(in HollowHalfSphereMeshDescriptor descriptor,
-			NativeSlice<float3> vertices, NativeSlice<int> indices)
+			NativeSlice<float3> vertices, NativeSlice<int> indices, int baseVertexIndex = 0)
 		{
 			var verticesPtr = (float3*)vertices.GetUnsafePtr();
 			var indicesPtr = (int*)indices.GetUnsafePtr();
 			
-			GenerateHollowHalfSphereMeshData(descriptor.BandVertexCounts, descriptor.VertexCount, verticesPtr, indicesPtr);
+			GenerateHollowHalfSphereMeshData(descriptor.BandVertexCounts, descriptor.VertexCount, verticesPtr, indicesPtr, baseVertexIndex);
 		}
 
 		/// <summary>
@@ -280,7 +284,7 @@ namespace Saesentsessis.MeshGeneration
 		{
 			const MeshUpdateFlags flags = MeshUpdateFlags.DontNotifyMeshUsers | MeshUpdateFlags.DontRecalculateBounds |
 			                              MeshUpdateFlags.DontValidateIndices
-#if UNITY_6000_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
 			                              | MeshUpdateFlags.DontValidateLodRanges
 #endif
 				;
@@ -336,7 +340,7 @@ namespace Saesentsessis.MeshGeneration
 		[Unity.Burst.CompilerServices.SkipLocalsInit]
 		[BurstCompile(DisableSafetyChecks = true, FloatMode = FloatMode.Fast)]
 		private static unsafe void GenerateHollowHalfSphereMeshData(in NativeArray<int>.ReadOnly vertexCountPerBand,
-			int vertexCount, float3* verticesPtr, ushort* indicesPtr)
+			int vertexCount, float3* verticesPtr, ushort* indicesPtr, ushort baseVertexIndex = 0)
 		{
 			var bandCount = vertexCountPerBand.Length;
 			var bandVertexIndexOffsetsPtr = stackalloc ushort[bandCount];
@@ -345,7 +349,7 @@ namespace Saesentsessis.MeshGeneration
 			var accumulator = 0;
 			for (var bandIndex = 0; bandIndex < bandCount; bandIndex++)
 			{
-				bandVertexIndexOffsetsPtr[bandIndex] = (ushort)accumulator;
+				bandVertexIndexOffsetsPtr[bandIndex] = (ushort)(accumulator + baseVertexIndex);
 				accumulator += vertexCountPerBand[bandIndex];
 			}
 
@@ -406,7 +410,7 @@ namespace Saesentsessis.MeshGeneration
 		[Unity.Burst.CompilerServices.SkipLocalsInit]
 		[BurstCompile(DisableSafetyChecks = true, FloatMode = FloatMode.Fast)]
 		private static unsafe void GenerateHollowHalfSphereMeshData(in NativeArray<int>.ReadOnly vertexCountPerBand,
-			int vertexCount, float3* verticesPtr, int* indicesPtr)
+			int vertexCount, float3* verticesPtr, int* indicesPtr, int baseVertexIndex = 0)
 		{
 			var bandCount = vertexCountPerBand.Length;
 			var bandVertexIndexOffsetsPtr = stackalloc int[bandCount];
@@ -415,7 +419,7 @@ namespace Saesentsessis.MeshGeneration
 			var accumulator = 0;
 			for (var bandIndex = 0; bandIndex < bandCount; bandIndex++)
 			{
-				bandVertexIndexOffsetsPtr[bandIndex] = accumulator;
+				bandVertexIndexOffsetsPtr[bandIndex] = accumulator + baseVertexIndex;
 				accumulator += vertexCountPerBand[bandIndex];
 			}
 

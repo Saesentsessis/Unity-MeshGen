@@ -31,14 +31,15 @@ namespace Saesentsessis.MeshGeneration
 		/// <param name="descriptor">Hollow cone descriptor, that can be obtained using <see cref="CreateHollowConeMeshDescriptor"/> function.</param>
 		/// <param name="vertices">Vertex buffer, owned by the caller.</param>
 		/// <param name="indices">Index buffer, owned by the caller.</param>
+		/// <param name="baseVertexIndex">Optional index offset.</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static unsafe void GenerateHollowConeMeshData(in HollowConeMeshDescriptor descriptor,
-			NativeArray<float3> vertices, NativeArray<ushort> indices)
+			NativeArray<float3> vertices, NativeArray<ushort> indices, ushort baseVertexIndex = 0)
 		{
 			var verticesPtr = (float3*)vertices.GetUnsafePtr();
 			var indicesPtr = (ushort*)indices.GetUnsafePtr();
 
-			GenerateHollowConeMeshData(descriptor.Resolution, descriptor.HalfAngleRadians, verticesPtr, indicesPtr);
+			GenerateHollowConeMeshData(descriptor.Resolution, descriptor.HalfAngleRadians, verticesPtr, indicesPtr, baseVertexIndex);
 		}
 
 		/// <summary>
@@ -49,14 +50,15 @@ namespace Saesentsessis.MeshGeneration
 		/// <param name="descriptor">Hollow cone descriptor, that can be obtained using <see cref="CreateHollowConeMeshDescriptor"/> function.</param>
 		/// <param name="vertices">Vertex buffer, owned by the caller.</param>
 		/// <param name="indices">Index buffer, owned by the caller.</param>
+		/// <param name="baseVertexIndex">Optional index offset.</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static unsafe void GenerateHollowConeMeshData(in HollowConeMeshDescriptor descriptor,
-			NativeSlice<float3> vertices, NativeSlice<ushort> indices)
+			NativeSlice<float3> vertices, NativeSlice<ushort> indices, ushort baseVertexIndex = 0)
 		{
 			var verticesPtr = (float3*)vertices.GetUnsafePtr();
 			var indicesPtr = (ushort*)indices.GetUnsafePtr();
 
-			GenerateHollowConeMeshData(descriptor.Resolution, descriptor.HalfAngleRadians, verticesPtr, indicesPtr);
+			GenerateHollowConeMeshData(descriptor.Resolution, descriptor.HalfAngleRadians, verticesPtr, indicesPtr, baseVertexIndex);
 		}
 
 		/// <summary>
@@ -67,14 +69,15 @@ namespace Saesentsessis.MeshGeneration
 		/// <param name="descriptor">Hollow cone descriptor, that can be obtained using <see cref="CreateHollowConeMeshDescriptor"/> function.</param>
 		/// <param name="vertices">Vertex buffer, owned by the caller.</param>
 		/// <param name="indices">Index buffer, owned by the caller.</param>
+		/// <param name="baseVertexIndex">Optional index offset.</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static unsafe void GenerateHollowConeMeshData(in HollowConeMeshDescriptor descriptor,
-			NativeArray<float3> vertices, NativeArray<int> indices)
+			NativeArray<float3> vertices, NativeArray<int> indices, int baseVertexIndex = 0)
 		{
 			var verticesPtr = (float3*)vertices.GetUnsafePtr();
 			var indicesPtr = (int*)indices.GetUnsafePtr();
 
-			GenerateHollowConeMeshData(descriptor.Resolution, descriptor.HalfAngleRadians, verticesPtr, indicesPtr);
+			GenerateHollowConeMeshData(descriptor.Resolution, descriptor.HalfAngleRadians, verticesPtr, indicesPtr, baseVertexIndex);
 		}
 
 		/// <summary>
@@ -85,14 +88,15 @@ namespace Saesentsessis.MeshGeneration
 		/// <param name="descriptor">Hollow cone descriptor, that can be obtained using <see cref="CreateHollowConeMeshDescriptor"/> function.</param>
 		/// <param name="vertices">Vertex buffer, owned by the caller.</param>
 		/// <param name="indices">Index buffer, owned by the caller.</param>
+		/// <param name="baseVertexIndex">Optional index offset.</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static unsafe void GenerateHollowConeMeshData(in HollowConeMeshDescriptor descriptor,
-			NativeSlice<float3> vertices, NativeSlice<int> indices)
+			NativeSlice<float3> vertices, NativeSlice<int> indices, int baseVertexIndex = 0)
 		{
 			var verticesPtr = (float3*)vertices.GetUnsafePtr();
 			var indicesPtr = (int*)indices.GetUnsafePtr();
 			
-			GenerateHollowConeMeshData(descriptor.Resolution, descriptor.HalfAngleRadians, verticesPtr, indicesPtr);
+			GenerateHollowConeMeshData(descriptor.Resolution, descriptor.HalfAngleRadians, verticesPtr, indicesPtr, baseVertexIndex);
 		}
 
 		/// <summary>
@@ -104,7 +108,7 @@ namespace Saesentsessis.MeshGeneration
 		{
 			const MeshUpdateFlags flags = MeshUpdateFlags.DontNotifyMeshUsers | MeshUpdateFlags.DontRecalculateBounds |
 			                              MeshUpdateFlags.DontValidateIndices
-#if UNITY_6000_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
 			                              | MeshUpdateFlags.DontValidateLodRanges
 #endif
 				;
@@ -169,44 +173,44 @@ namespace Saesentsessis.MeshGeneration
 		[Unity.Burst.CompilerServices.SkipLocalsInit]
 		[BurstCompile(DisableSafetyChecks = true, FloatMode = FloatMode.Fast)]
 		private static unsafe void GenerateHollowConeMeshData(int resolution, float halfAngleRadians,
-			float3* verticesPtr, ushort* indicesPtr)
+			float3* verticesPtr, ushort* indicesPtr, ushort baseVertexIndex = 0)
 		{
 			var radius = math.sin(halfAngleRadians);
 
 			*verticesPtr++ = float3.zero;
 			MeshGeneratorUtils.PopulateCircleVertices(verticesPtr, radius, 1f, 0f, resolution);
 
-			*indicesPtr++ = 0;
+			*indicesPtr++ = baseVertexIndex;
 			*indicesPtr++ = (ushort)resolution;
-			*indicesPtr++ = 1;
+			*indicesPtr++ = (ushort)(baseVertexIndex + 1);
 
 			for (var i = 1; i < resolution; i++)
 			{
-				*indicesPtr++ = 0;
-				*indicesPtr++ = (ushort)i;
-				*indicesPtr++ = (ushort)(i + 1);
+				*indicesPtr++ = baseVertexIndex;
+				*indicesPtr++ = (ushort)(baseVertexIndex + i);
+				*indicesPtr++ = (ushort)(baseVertexIndex + i + 1);
 			}
 		}
 
 		[Unity.Burst.CompilerServices.SkipLocalsInit]
 		[BurstCompile(DisableSafetyChecks = true, FloatMode = FloatMode.Fast)]
 		private static unsafe void GenerateHollowConeMeshData(int resolution, float halfAngleRadians,
-			float3* verticesPtr, int* indicesPtr)
+			float3* verticesPtr, int* indicesPtr, int baseVertexIndex = 0)
 		{
 			var radius = math.sin(halfAngleRadians);
 
 			*verticesPtr++ = float3.zero;
 			MeshGeneratorUtils.PopulateCircleVertices(verticesPtr, radius, 1f, 0f, resolution);
 
-			*indicesPtr++ = 0;
-			*indicesPtr++ = 1;
+			*indicesPtr++ = baseVertexIndex;
 			*indicesPtr++ = resolution;
+			*indicesPtr++ = (baseVertexIndex + 1);
 
 			for (var i = 1; i < resolution; i++)
 			{
-				*indicesPtr++ = 0;
-				*indicesPtr++ = i;
-				*indicesPtr++ = i + 1;
+				*indicesPtr++ = baseVertexIndex;
+				*indicesPtr++ = baseVertexIndex + i;
+				*indicesPtr++ = baseVertexIndex + i + 1;
 			}
 		}
 	}
