@@ -17,7 +17,7 @@ namespace Saesentsessis.MeshGeneration
 		/// <see cref="CreateHollowHalfSphereMesh"/> function.
 		/// </summary>
 		/// <param name="bandVertexCounts">
-		/// Per-band vertex counts of the half sphere. Each band should have more than 3
+		/// Per-band vertex counts of the half sphere. Each band should have at least 3
 		/// vertices and the sum of all bands should be less or equals than int.MaxValue.
 		/// This property is passed directly to the resulting structure, thus not being
 		/// copied. If you want opposite behavior - use <see cref="CreateHollowHalfSphereMeshDescriptorWithCopy"/>.
@@ -29,6 +29,16 @@ namespace Saesentsessis.MeshGeneration
 		public static HollowHalfSphereMeshDescriptor CreateHollowHalfSphereMeshDescriptor(
 			in NativeArray<int> bandVertexCounts)
 		{
+			if (bandVertexCounts.Length == 0)
+				throw new ArgumentException("A half-sphere needs at least one band.", nameof(bandVertexCounts));
+
+			for (var bandIndex = 0; bandIndex < bandVertexCounts.Length; bandIndex++)
+			{
+				if (bandVertexCounts[bandIndex] < 3)
+					throw new ArgumentOutOfRangeException(nameof(bandVertexCounts), bandVertexCounts[bandIndex],
+						$"Vertex count for band {bandIndex} should be more or equal to 3.");
+			}
+
 			long vertexCount = bandVertexCounts[0] + 1;
 			long triangleCount = bandVertexCounts[^1];
 
@@ -36,19 +46,16 @@ namespace Saesentsessis.MeshGeneration
 			{
 				var bandVertexCount = bandVertexCounts[bandIndex];
 
-				if (bandVertexCount < 3)
-					throw new ArgumentOutOfRangeException(nameof(bandVertexCounts), bandVertexCount,
-						$"Vertex count for band {bandIndex} should be more or equal to 3.");
-				
 				vertexCount += bandVertexCount;
 				triangleCount += bandVertexCount + bandVertexCounts[bandIndex - 1];
 			}
-			
+
 			if (vertexCount > int.MaxValue)
 				throw new OverflowException("Unable to create HollowHalfSphereMeshDescriptor: vertex count must be less or equal to 2147483647.");
-			
-			if (triangleCount > uint.MaxValue / 3)
-				throw new OverflowException("Unable to create HollowHalfSphereMeshDescriptor: index count must be less or equal to 4294967295.");
+
+			// IndexCount is an int.
+			if (triangleCount > int.MaxValue / 3)
+				throw new OverflowException("Unable to create HollowHalfSphereMeshDescriptor: index count must be less or equal to 2147483647.");
 
 			return new HollowHalfSphereMeshDescriptor((int)vertexCount, (int)triangleCount * 3, bandVertexCounts);
 		}
@@ -80,7 +87,7 @@ namespace Saesentsessis.MeshGeneration
 		/// <see cref="CreateHollowHalfSphereMesh"/> function.
 		/// </summary>
 		/// <param name="bandVertexCounts">
-		/// Per-band vertex counts of the half sphere. Each band should have more than 3
+		/// Per-band vertex counts of the half sphere. Each band should have at least 3
 		/// vertices and the sum of all bands should be less or equals than int.MaxValue.
 		/// </param>
 		/// <param name="allocator">An allocator for an internal buffers.</param>
@@ -215,7 +222,7 @@ namespace Saesentsessis.MeshGeneration
 			var verticesPtr = (float3*)vertices.GetUnsafePtr();
 			var indicesPtr = (ushort*)indices.GetUnsafePtr();
 			
-			GenerateHollowHalfSphereMeshData(descriptor.BandVertexCounts, descriptor.VertexCount, verticesPtr, indicesPtr);
+			GenerateHollowHalfSphereMeshData(descriptor.BandVertexCounts, descriptor.VertexCount, verticesPtr, indicesPtr, baseVertexIndex);
 		}
 
 		/// <summary>
@@ -234,7 +241,7 @@ namespace Saesentsessis.MeshGeneration
 			var verticesPtr = (float3*)vertices.GetUnsafePtr();
 			var indicesPtr = (ushort*)indices.GetUnsafePtr();
 			
-			GenerateHollowHalfSphereMeshData(descriptor.BandVertexCounts, descriptor.VertexCount, verticesPtr, indicesPtr);
+			GenerateHollowHalfSphereMeshData(descriptor.BandVertexCounts, descriptor.VertexCount, verticesPtr, indicesPtr, baseVertexIndex);
 		}
 		
 		/// <summary>
@@ -284,7 +291,8 @@ namespace Saesentsessis.MeshGeneration
 		{
 			const MeshUpdateFlags flags = MeshUpdateFlags.DontNotifyMeshUsers | MeshUpdateFlags.DontRecalculateBounds |
 			                              MeshUpdateFlags.DontValidateIndices
-#if UNITY_6000_0_OR_NEWER
+			                              // Mesh LODs (and this flag) exist from Unity 6000.2.
+#if UNITY_6000_2_OR_NEWER
 			                              | MeshUpdateFlags.DontValidateLodRanges
 #endif
 				;
@@ -374,7 +382,7 @@ namespace Saesentsessis.MeshGeneration
 			}
 
 			*verticesPtr = new float3(0, 0, 1);
-			var apexVertexIndex = vertexCount - 1;
+			var apexVertexIndex = (ushort)(baseVertexIndex + vertexCount - 1);
 
 			// Bridge circle loops with triangles
 			for (var bandIndex = bandCount - 1; bandIndex > 0; bandIndex--)
@@ -444,7 +452,7 @@ namespace Saesentsessis.MeshGeneration
 			}
 
 			*verticesPtr = new float3(0, 0, 1);
-			var apexVertexIndex = vertexCount - 1;
+			var apexVertexIndex = baseVertexIndex + vertexCount - 1;
 
 			// Bridge circle loops with triangles
 			for (var bandIndex = bandCount - 1; bandIndex > 0; bandIndex--)

@@ -108,14 +108,16 @@ namespace Saesentsessis.MeshGeneration
 		{
 			const MeshUpdateFlags flags = MeshUpdateFlags.DontNotifyMeshUsers | MeshUpdateFlags.DontRecalculateBounds |
 			                              MeshUpdateFlags.DontValidateIndices
-#if UNITY_6000_0_OR_NEWER
+			                              // Mesh LODs (and this flag) exist from Unity 6000.2.
+#if UNITY_6000_2_OR_NEWER
 			                              | MeshUpdateFlags.DontValidateLodRanges
 #endif
 				;
 
-			if ((uint)descriptor.Resolution + 1 > int.MaxValue)
+			// The index count (3 per ring vertex) must fit an int.
+			if (descriptor.Resolution is < 3 or > int.MaxValue / 3)
 				throw new ArgumentOutOfRangeException(nameof(descriptor.Resolution), descriptor.Resolution,
-					"Vertex count should be in range [3 : 2147483646].");
+					"Resolution should be in range [3 : 715827882].");
 
 			if (descriptor.HalfAngleRadians is < 0.00174533f or > 1.553343f)
 				throw new ArgumentOutOfRangeException(nameof(descriptor.HalfAngleRadians), 
@@ -181,7 +183,7 @@ namespace Saesentsessis.MeshGeneration
 			MeshGeneratorUtils.PopulateCircleVertices(verticesPtr, radius, 1f, 0f, resolution);
 
 			*indicesPtr++ = baseVertexIndex;
-			*indicesPtr++ = (ushort)resolution;
+			*indicesPtr++ = (ushort)(baseVertexIndex + resolution);
 			*indicesPtr++ = (ushort)(baseVertexIndex + 1);
 
 			for (var i = 1; i < resolution; i++)
@@ -203,8 +205,8 @@ namespace Saesentsessis.MeshGeneration
 			MeshGeneratorUtils.PopulateCircleVertices(verticesPtr, radius, 1f, 0f, resolution);
 
 			*indicesPtr++ = baseVertexIndex;
-			*indicesPtr++ = resolution;
-			*indicesPtr++ = (baseVertexIndex + 1);
+			*indicesPtr++ = baseVertexIndex + resolution;
+			*indicesPtr++ = baseVertexIndex + 1;
 
 			for (var i = 1; i < resolution; i++)
 			{
