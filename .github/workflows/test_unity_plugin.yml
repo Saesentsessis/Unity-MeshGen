@@ -4,7 +4,25 @@ name: test-unity-plugin
 # 1. Triggers
 ##############################################################################
 on:
+  # Manual runs read UNITY_* from repository secrets directly.
   workflow_dispatch:
+    inputs:
+      projectPath:
+        description: Unity test project to run
+        required: true
+        type: string
+        default: ./Unity-Tests/2022.3.62f3
+      unityVersion:
+        description: Unity editor version (must match the project)
+        required: true
+        type: string
+        default: 2022.3.62f3
+      testMode:
+        description: Test mode
+        required: true
+        type: choice
+        options: [editmode, playmode, standalone]
+        default: editmode
   workflow_call:
     inputs:
       projectPath: { required: true, type: string }
@@ -65,7 +83,12 @@ jobs:
           path: |
             ${{ inputs.projectPath }}/Library
             ~/.cache/unity3d
-          key: ${{ inputs.unityVersion }} ${{ inputs.testMode }} on ${{ matrix.platform }}
+          # Content-based key: cache entries are immutable, so a fixed key would
+          # never be refreshed. restore-keys falls back to the newest prior cache
+          # for this config so Unity only reimports what changed.
+          key: Library-${{ inputs.unityVersion }}-${{ inputs.testMode }}-${{ matrix.platform }}-${{ hashFiles(format('{0}/Assets/**', inputs.projectPath), format('{0}/Packages/**', inputs.projectPath), format('{0}/ProjectSettings/**', inputs.projectPath), 'Unity-MeshGen/Assets/root/**') }}
+          restore-keys: |
+            Library-${{ inputs.unityVersion }}-${{ inputs.testMode }}-${{ matrix.platform }}-
 
       - name: Generate custom image name
         id: custom_image
@@ -73,7 +96,7 @@ jobs:
         shell: bash
 
       - name: Run Unity tests
-        uses: game-ci/unity-test-runner@v4.3.0
+        uses: game-ci/unity-test-runner@v4.3.2
         id: tests
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}

@@ -182,7 +182,7 @@ Or manually add the scoped registry to your `Packages/manifest.json`:
 ```json
 {
   "dependencies": {
-    "com.saesentsessis.unity-meshgen": "0.1.0"
+    "com.saesentsessis.unity-meshgen": "0.2.0"
   },
   "scopedRegistries": [
     {
@@ -199,7 +199,7 @@ Or manually add the scoped registry to your `Packages/manifest.json`:
 ### Method 2: Unity package installer
 
 1. Download the latest `.unitypackage` from [GitHub Releases page](https://github.com/Saesentsessis/Unity-MeshGen/releases).
-   - _Direct Link:_ [Unity-MeshGen-Installer.unitypackage](https://github.com/Saesentsessis/Unity-MeshGen/releases/download/0.1.0/Unity-MeshGen-Installer.unitypackage)
+   - _Direct Link:_ [Unity-MeshGen-Installer.unitypackage](https://github.com/Saesentsessis/Unity-MeshGen/releases/download/0.2.0/Unity-MeshGen-Installer.unitypackage)
 2. Import the downloaded package into your Unity project.
 3. The installer will automatically configure OpenUPM in your `manifest.json` file and install the package dependencies.
 
@@ -215,7 +215,7 @@ Or manually add the scoped registry to your `Packages/manifest.json`:
 You can specify exact release version of this package like this:
 
 ```
-https://github.com/Saesentsessis/Unity-MeshGen.git?path=Unity-MeshGen/Assets/root#0.1.0
+https://github.com/Saesentsessis/Unity-MeshGen.git?path=Unity-MeshGen/Assets/root#0.2.0
 ```
 
 ## License
