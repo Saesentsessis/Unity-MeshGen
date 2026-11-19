@@ -10,6 +10,12 @@ permissions:
   contents: write
   checks: write
 
+# Serialize releases so two quick pushes to main can't race to create the
+# same tag/release. Queued runs wait instead of being cancelled mid-publish.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   INSTALLER_UNITY_VERSION: 2022.3.62f3
 
@@ -124,10 +130,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ./Installer/Library
-          key: Library-Unity-Installer
+          # Content-based key: cache entries are immutable, so a fixed key would
+          # never be refreshed. restore-keys falls back to the newest prior cache.
+          key: Library-Unity-Installer-${{ env.INSTALLER_UNITY_VERSION }}-${{ hashFiles('Installer/Assets/**', 'Installer/Packages/**', 'Installer/ProjectSettings/**', 'Unity-MeshGen/Assets/root/**') }}
+          restore-keys: |
+            Library-Unity-Installer-${{ env.INSTALLER_UNITY_VERSION }}-
 
       - name: Test Unity Installer (EditMode)
-        uses: game-ci/unity-test-runner@v4
+        uses: game-ci/unity-test-runner@v4.3.2
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
@@ -349,11 +359,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Cleanup job to remove build artifacts after the atomic publish.
+  # Cleanup job to remove build artifacts after a successful atomic publish.
+  # Runs only on success so artifacts from failed runs stay available for
+  # debugging (they expire per the repo's artifact retention setting).
   cleanup-artifacts:
     runs-on: ubuntu-latest
     needs: [release-unity-plugin]
-    if: always()
+    if: needs.release-unity-plugin.result == 'success'
+    # Deleting artifacts requires actions:write; job-level permissions replace
+    # the workflow-level set, so nothing else is granted here.
+    permissions:
+      actions: write
     steps:
       - name: Delete Unity Package artifacts
         uses: geekyeggo/delete-artifact@v5
