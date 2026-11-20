@@ -161,7 +161,13 @@ jobs:
 
           # Reset only tracked files to their committed state
           git reset --hard HEAD
-          echo "Cleaned Unity artifacts and reset tracked files"
+
+          # Remove what opening the project generated (default ProjectSettings assets, packages-lock.json,
+          # UserSettings): unity-builder refuses an untracked file ("Branch is dirty"). Unity runs in Docker as root,
+          # so take the files back first. Ignored files (the cached Library) stay.
+          sudo chown -R "$(id -u):$(id -g)" ./Installer
+          git clean -fd -- ./Installer
+          echo "Cleaned Unity artifacts, reset tracked files and removed untracked ones"
 
       - name: Export Unity Package
         uses: game-ci/unity-builder@v5
