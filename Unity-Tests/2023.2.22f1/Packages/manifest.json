@@ -47,5 +47,8 @@
         "org.nuget"
       ]
     }
+  ],
+  "testables": [
+    "com.saesentsessis.unity-meshgen"
   ]
 }
